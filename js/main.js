@@ -7,6 +7,7 @@ import { UI } from './ui.js';
 import { Input } from './input.js';
 import { Game } from './game.js';
 import { Character } from './character.js';
+import { initApp, applyUpdateIfSafe, APP_VERSION } from './app.js';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
@@ -131,6 +132,7 @@ function goMenu() {
   $('#lockhint').classList.remove('on');
   if (game.mode !== 'demo') game.startDemo(pickDemoArena());
   Audio.music(true);
+  applyUpdateIfSafe();
 }
 function pickDemoArena() { const a = ['praia', 'praca', 'ginasio']; return a[Math.floor(Math.random() * a.length)]; }
 
@@ -506,7 +508,8 @@ function buildSettings() {
     ${rng('music', 'Música', 'Samba do menu', 0, 1, 0.05)}
     ${rng('sfx', 'Efeitos', 'Batidas, torcida, apito', 0, 1, 0.05)}
     ${tog('haptics', 'Vibração', 'No celular, a cada batida')}
-    <div class="srow"><label>Apagar progresso<small>Começa do zero (não tem volta!)</small></label><button class="btn small ghost" id="set-reset">APAGAR</button></div>`;
+    <div class="srow"><label>Apagar progresso<small>Começa do zero (não tem volta!)</small></label><button class="btn small ghost" id="set-reset">APAGAR</button></div>
+    <div class="version">Petecaço versão ${APP_VERSION} • atualiza sozinho</div>`;
   const body = $('#set-body');
   body.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const k = b.dataset.tog; st[k] = !st[k]; Audio.ui('click'); Save.persist(); input.haptics = st.haptics; buildSettings(); });
   body.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => {
@@ -589,6 +592,10 @@ async function boot() {
   setTimeout(() => { goMenu(); }, 250);
 }
 boot();
+initApp({
+  toast: (i, t, d) => ui.toastText(i, t, d),
+  isSafe: () => game.mode === 'demo' && !document.querySelector('#settings.show, #profile.show'),
+});
 
 // ganchos de depuração/teste
 window.__petecaco = {

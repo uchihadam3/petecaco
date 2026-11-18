@@ -378,3 +378,15 @@ body:not(.touch) .touch-only { display: none; }
   .speech { max-width: 140px; font-size: 11px; }
   .ach { grid-column: 1 / -1; }
 }
+
+/* instalação / atualização */
+#install-btn[hidden] { display: none; }
+.install-card { max-width: min(440px, 92vw); max-height: 90vh; overflow-y: auto; }
+.install-card p, .install-card li { font-size: 15px; line-height: 1.5; margin: 4px 0; }
+.install-card ol { margin: 0 0 6px; padding-left: 20px; }
+.ios-share { display: inline-block; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; }
+.update-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 20, 0.92); animation: fadein 0.3s; text-align: center; font-size: 54px; }
+.update-overlay div { display: flex; flex-direction: column; gap: 6px; }
+.update-overlay b { font-family: var(--title); font-size: 34px; color: var(--yellow); }
+.update-overlay small { font-size: 15px; color: var(--muted); font-weight: 800; }
+.version { color: var(--muted); font-size: 12px; font-weight: 800; text-align: center; margin-top: 6px; }

@@ -8,6 +8,17 @@ Jogo de peteca 3D em primeira pessoa feito pra ser jogado no navegador, no **PC 
 
 Não precisa instalar nada. No celular, jogue com o aparelho deitado.
 
+## 📲 Instalar como app
+
+O Petecaço pode ser instalado como app (PWA): ganha ícone, abre em tela cheia e **funciona offline**.
+
+- **PC e Android (Chrome/Edge):** toque em **📲 INSTALAR O JOGO** no menu ou use "Instalar app" no menu do navegador.
+- **iPhone/iPad (Safari):** Compartilhar ⬆︎ → **Adicionar à Tela de Início**.
+
+**Atualização automática:** toda vez que uma versão nova é publicada aqui no GitHub, o jogo instalado baixa sozinho e se atualiza quando você volta ao menu, sem precisar reinstalar.
+
+> Para quem publica: a cada versão, aumente `VERSION` em `sw.js` (e `APP_VERSION` em `js/app.js`).
+
 ## 🎮 O que tem no jogo
 
 - **Primeira pessoa de verdade**: mãos animadas que vão até a peteca na hora da batida, com *hitstop*, tremida de câmera, partículas de pena, som de tapa e torcida.
