@@ -1,6 +1,6 @@
 // Service worker do Petecaço: instala o jogo, funciona offline e se atualiza sozinho.
 // Estratégia: rede primeiro (sempre pega a versão mais nova publicada), cache como reserva offline.
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const CACHE = 'petecaco-' + VERSION;
 const SHELL = [
   './', './index.html', './css/style.css', './manifest.webmanifest',

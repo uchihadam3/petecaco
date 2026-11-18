@@ -307,9 +307,9 @@ body:not(.touch) .touch-only { display: none; }
 .tb { position: absolute; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4); font-family: var(--title); letter-spacing: 1px; color: #fff; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.5); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); touch-action: none; transition: transform 0.06s; }
 .tb.down { transform: scale(0.88); filter: brightness(1.3); }
 .tb.hit { right: 0; bottom: 0; width: 112px; height: 112px; font-size: 21px; background: radial-gradient(circle at 35% 30%, #3dffa0, #00a94f); }
-.tb.lob { right: 122px; bottom: 6px; width: 74px; height: 74px; font-size: 14px; background: radial-gradient(circle at 35% 30%, #7ab4ff, #1f5fe0); }
+.tb.lob { right: 105px; bottom: 93px; width: 74px; height: 74px; font-size: 14px; background: radial-gradient(circle at 35% 30%, #7ab4ff, #1f5fe0); }
 .tb.drop { right: 18px; bottom: 122px; width: 74px; height: 74px; font-size: 14px; background: radial-gradient(circle at 35% 30%, #ffd36b, #e08a00); }
-.tb.jump { right: 110px; bottom: 98px; width: 64px; height: 64px; font-size: 12px; background: rgba(255, 255, 255, 0.18); }
+.tb.jump { right: 127px; bottom: 11px; width: 64px; height: 64px; font-size: 12px; background: rgba(255, 255, 255, 0.18); }
 .tb.dash { right: 196px; bottom: 96px; width: 52px; height: 52px; font-size: 20px; background: rgba(120, 190, 255, 0.25); }
 
 /* modal */
