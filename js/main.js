@@ -8,6 +8,7 @@ import { Input } from './input.js';
 import { Game } from './game.js';
 import { Character } from './character.js';
 import { initApp, applyUpdateIfSafe, APP_VERSION } from './app.js';
+import { PRESETS, PRESET_ORDER, applyPreset, detectPreset, ensureAssists, xpMultiplier } from './assists.js';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
@@ -15,6 +16,7 @@ const loadbar = $('.loadbar i');
 const setLoad = (p) => { loadbar.style.width = (p * 100) + '%'; };
 
 Save.load();
+ensureAssists();
 const S = Save.data;
 const ui = new UI();
 const canvas = $('#c');
@@ -204,9 +206,12 @@ function buildOppDetail() {
     <div class="chips" id="arena-chips">${Object.values(ARENAS).map(a => `<button class="chip ${a.id === arena ? 'on' : ''}" data-arena="${a.id}">${a.name}</button>`).join('')}</div>
     <div class="od-label">Duração</div>
     <div class="chips" id="fmt-chips">${Object.entries(FORMATS).map(([k, f]) => `<button class="chip ${k === selFormat ? 'on' : ''}" data-fmt="${k}">${f.label}</button>`).join('')}</div>
+    <div class="od-label">Assistência <span style="color:#7dffb0">• XP x${xpMultiplier().toFixed(2)}</span></div>
+    <div class="chips" id="assist-chips">${assistChipsHTML()}</div>
     <button class="btn primary xl" id="play-opp">🤚 JOGAR</button>`;
   d.querySelectorAll('[data-arena]').forEach(b => b.onclick = () => { selArena = b.dataset.arena; Audio.ui('click'); buildOppDetail(); });
   d.querySelectorAll('[data-fmt]').forEach(b => b.onclick = () => { selFormat = b.dataset.fmt; S.settings.format = selFormat; Save.persist(); Audio.ui('click'); buildOppDetail(); });
+  d.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { applyPreset(b.dataset.preset); Audio.ui('click'); buildOppDetail(); });
   $('#play-opp').onclick = () => { Audio.ui('click'); startFriendly(o.id, arena, selFormat); };
 }
 
@@ -375,13 +380,15 @@ function onMatchEnd(r) {
       } else { advanceRound(tour.round); tour.round++; }
     } else { tour.done = true; }
   }
+  const xpMul = xpMultiplier();
+  xp = Math.round(xp * xpMul);
   const startLevel = S.level, startXP = S.xp;
   S.coins += coins;
   const levels = Save.addXP(xp);
   if (S.level >= 10) ach('level10');
   if (o.id === 'iara' && r.won && !S.ownedSkins.includes('ouro')) { S.ownedSkins.push('ouro'); newAch.push({ icon: '🪶', name: 'Peteca Ouro Lendário', desc: 'Desbloqueada na Coleção!' }); }
   Save.persist();
-  showResult(r, { xp, coins, levels, startLevel, startXP, newAch, tourMsg });
+  showResult(r, { xp, coins, levels, startLevel, startXP, newAch, tourMsg, xpMul });
 }
 
 function showResult(r, rw) {
@@ -417,7 +424,7 @@ function showResult(r, rw) {
     }
     bar.style.transition = 'width 0.05s linear';
     bar.style.width = (cur / xpForLevel(lvl) * 100) + '%';
-    gain.textContent = `+${shown} XP`;
+    gain.textContent = `+${shown} XP` + (rw.xpMul !== 1 ? ` (x${rw.xpMul.toFixed(2)})` : '');
     if (coinShown < rw.coins) { coinShown = Math.min(rw.coins, coinShown + Math.max(1, Math.ceil(rw.coins / 40))); coinEl.textContent = '+' + coinShown; if (coinShown % 5 === 0) Audio.ui('coin'); }
     if (left > 0 || coinShown < rw.coins) setTimeout(step, 28);
     else {
@@ -491,19 +498,36 @@ function buildProfile(tab) {
 
 // ---------- ajustes ----------
 let fromPause = false;
+function assistChipsHTML() {
+  const cur = S.settings.assistPreset;
+  return PRESET_ORDER.map(id => `<button class="chip ${cur === id ? 'on' : ''}" data-preset="${id}">${PRESETS[id].icon} ${PRESETS[id].label}</button>`).join('') + (cur === 'custom' ? '<button class="chip on">⚙️ Personalizada</button>' : '');
+}
 function buildSettings() {
   const st = S.settings;
   const tog = (k, label, sub) => `<div class="srow"><label>${label}<small>${sub}</small></label><button class="toggle ${st[k] ? 'on' : ''}" data-tog="${k}"></button></div>`;
   const seg = (k, label, sub, opts) => `<div class="srow"><label>${label}<small>${sub}</small></label><div class="seg">${opts.map(([v, l]) => `<button class="${String(st[k]) === String(v) ? 'on' : ''}" data-seg="${k}" data-v="${v}">${l}</button>`).join('')}</div></div>`;
   const rng = (k, label, sub, min, max, step) => `<div class="srow"><label>${label}<small>${sub}</small></label><input type="range" min="${min}" max="${max}" step="${step}" value="${st[k]}" data-rng="${k}"></div>`;
+  const cur = st.assistPreset;
+  const xm = xpMultiplier();
   $('#set-body').innerHTML = `
+    <div class="sec-title">🛟 Assistências <span class="xpb ${xm < 1 ? 'low' : ''}">XP x${xm.toFixed(2)}</span></div>
+    <div class="presets">${PRESET_ORDER.map(id => `<div class="preset ${cur === id ? 'on' : ''}" data-preset="${id}"><span class="pi">${PRESETS[id].icon}</span>${PRESETS[id].label}</div>`).join('')}</div>
+    <div class="preset-desc">${cur === 'custom' ? '⚙️ Personalizada — você ajustou do seu jeito.' : PRESETS[cur].desc} Menos ajuda = mais XP.</div>
+    ${seg('hitHelp', 'Ajuda na batida', 'Alcance da mão maior e tempo mais tolerante', [[0, 'Off'], [1, 'Leve'], [2, 'Média'], [3, 'Forte']])}
+    ${seg('autoAim', 'Mira assistida', 'Corrige sua mira pra peteca cair dentro', [[0, 'Off'], [1, 'Leve'], [2, 'Total']])}
+    ${seg('autoMove', 'Corrida assistida', 'Te leva até onde a peteca vai cair', [[0, 'Off'], [1, 'Ímã'], [2, 'Total']])}
+    ${tog('autoHit', 'Batida automática', 'Bate sozinho quando a peteca chega (você só mira)')}
+    ${seg('speed', 'Velocidade do jogo', 'Peteca e jogadores mais lentos', [[0.72, '70%'], [0.85, '85%'], [1, '100%']])}
+    ${seg('aiLevel', 'Força dos adversários', 'Mexe em todos os oponentes', [[-1, 'Fácil'], [0, 'Normal'], [1, 'Difícil']])}
+    ${tog('outWarn', 'Aviso de bola fora', 'Anel fica vermelho e avisa “DEIXA!” quando vai sair')}
+    ${tog('landing', 'Indicador de queda', 'Anel amarelo onde a peteca vai cair')}
+    ${tog('aimMarker', 'Indicador de mira', 'Anel verde onde seu golpe vai')}
+    ${seg('lookAssist', 'Câmera assistida', 'Segue a peteca automaticamente', [[-1, 'Auto'], [0, 'Off'], [0.35, 'Leve'], [0.55, 'Média'], [0.7, 'Forte']])}
+    ${tog('autoJump', 'Pulo automático', 'Pula sozinho pra cortar petecas altas')}
+    <div class="sec-title">⚙️ Geral</div>
     <div class="srow"><label>Seu nome<small>Aparece no placar</small></label><input type="text" maxlength="12" id="set-name" value="${S.name.replace(/"/g, '')}"></div>
     ${rng('sens', 'Sensibilidade', 'Mouse / arrastar na tela', 0.3, 2.5, 0.05)}
     ${tog('invertY', 'Inverter eixo Y', 'Olhar pra cima/baixo invertido')}
-    ${seg('lookAssist', 'Câmera assistida', 'Segue a peteca automaticamente', [[-1, 'Auto'], [0, 'Off'], [0.35, 'Leve'], [0.7, 'Forte']])}
-    ${tog('landing', 'Indicador de queda', 'Anel amarelo onde a peteca vai cair')}
-    ${tog('aimMarker', 'Indicador de mira', 'Anel verde onde seu golpe vai')}
-    ${tog('autoJump', 'Pulo automático', 'Pula sozinho pra cortar petecas altas')}
     ${seg('quality', 'Gráficos', 'Baixe se estiver travando', [['auto', 'Auto'], ['low', 'Baixo'], ['medium', 'Médio'], ['high', 'Alto']])}
     ${rng('music', 'Música', 'Samba do menu', 0, 1, 0.05)}
     ${rng('sfx', 'Efeitos', 'Batidas, torcida, apito', 0, 1, 0.05)}
@@ -511,15 +535,19 @@ function buildSettings() {
     <div class="srow"><label>Apagar progresso<small>Começa do zero (não tem volta!)</small></label><button class="btn small ghost" id="set-reset">APAGAR</button></div>
     <div class="version">Petecaço versão ${APP_VERSION} • atualiza sozinho</div>`;
   const body = $('#set-body');
-  body.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const k = b.dataset.tog; st[k] = !st[k]; Audio.ui('click'); Save.persist(); input.haptics = st.haptics; buildSettings(); });
+  const keep = body.scrollTop;
+  const after = () => { detectPreset(); Save.persist(); const y = $('#settings').scrollTop; buildSettings(); $('#settings').scrollTop = y; };
+  body.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { Audio.ui('click'); applyPreset(b.dataset.preset); after(); });
+  body.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const k = b.dataset.tog; st[k] = !st[k]; Audio.ui('click'); input.haptics = st.haptics; after(); });
   body.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => {
     const k = b.dataset.seg; let v = b.dataset.v; if (!isNaN(parseFloat(v)) && k !== 'quality') v = parseFloat(v);
-    st[k] = v; Audio.ui('click'); Save.persist(); buildSettings();
+    st[k] = v; Audio.ui('click'); after();
     if (k === 'quality') { resize(); if (game.mode === 'demo') { game.arena = null; game.startDemo(pickDemoArena()); } }
   });
   body.querySelectorAll('[data-rng]').forEach(r => r.oninput = () => { st[r.dataset.rng] = parseFloat(r.value); Audio.setVolumes(st.sfx, st.music); Save.persist(); });
   $('#set-name').oninput = (e) => { S.name = e.target.value.trim() || 'Você'; Save.persist(); };
   $('#set-reset').onclick = () => { if (confirm('Apagar todo o progresso?')) { Save.reset(); location.reload(); } };
+  void keep;
 }
 
 // ---------- pausa / pointer lock ----------

@@ -196,15 +196,15 @@ export class Player {
   }
 
   // zona de alcance; retorna {q, f, l, h} ou null
-  reach(p) {
+  reach(p, sc = 1) {
     const dx = p.x - this.pos.x, dz = p.z - this.pos.z;
     const f = -Math.sin(this.yaw) * dx + -Math.cos(this.yaw) * dz;
     const l = Math.cos(this.yaw) * dx + -Math.sin(this.yaw) * dz;
     const h = p.y;
-    const top = 2.55 + this.jumpY * 1.05;
-    if (f < -0.55 || f > 1.75 || Math.abs(l) > 1.4 || h < 0.12 || h > top) return null;
+    const top = 2.55 + (sc - 1) * 0.6 + this.jumpY * 1.05;
+    if (f < -0.55 * sc || f > 1.75 * sc || Math.abs(l) > 1.4 * sc || h < 0.12 || h > top) return null;
     const hs = this.jumpY > 0.2 ? 2.2 + this.jumpY : 1.45;
-    const df = (f - 0.65) / 1.15, dl = (l - 0.3) / 1.45, dh = (h - hs) / 1.35;
+    const df = (f - 0.65) / (1.15 * sc), dl = (l - 0.3) / (1.45 * sc), dh = (h - hs) / (1.35 * sc);
     const q = clamp(1 - Math.sqrt(df * df + dl * dl + dh * dh) * 1.05, 0, 1);
     return { q, f, l, h };
   }

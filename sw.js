@@ -1,12 +1,12 @@
 // Service worker do Petecaço: instala o jogo, funciona offline e se atualiza sozinho.
 // Estratégia: rede primeiro (sempre pega a versão mais nova publicada), cache como reserva offline.
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CACHE = 'petecaco-' + VERSION;
 const SHELL = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './js/main.js', './js/game.js', './js/data.js', './js/save.js', './js/audio.js', './js/physics.js',
   './js/world.js', './js/peteca.js', './js/fx.js', './js/character.js', './js/player.js', './js/ai.js',
-  './js/input.js', './js/ui.js', './js/app.js', './lib/three.module.min.js',
+  './js/input.js', './js/ui.js', './js/app.js', './js/assists.js', './lib/three.module.min.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-512-maskable.png', './icons/apple-touch-icon.png',
 ];
 

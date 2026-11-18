@@ -11,7 +11,7 @@ class HUD {
     this.popups = $('#popups');
     this.speechT = null; this.banT = null;
   }
-  show(v) { this.el.classList.toggle('show', v); if (!v) { this.fire(false); this.serveMeter(false); this.hint(null); $('#introcard').classList.remove('on'); } }
+  show(v) { this.el.classList.toggle('show', v); if (!v) { this.fire(false); this.serveMeter(false); this.hint(null); this.outWarn(false); $('#introcard').classList.remove('on'); } }
   setNames(me, opp, practice) {
     $('#hud-me').textContent = me || 'VOCÊ';
     $('#hud-op').textContent = opp.name;
@@ -81,6 +81,14 @@ class HUD {
   speech(text) {
     const s = $('#hud-speech'); s.textContent = text; s.classList.add('on');
     clearTimeout(this.speechT); this.speechT = setTimeout(() => s.classList.remove('on'), 2600);
+  }
+  outWarn(v) { const e = $('#outwarn'); if (e.classList.contains('on') !== v) e.classList.toggle('on', v); }
+  lineCall(inside, cm) {
+    const e = $('#linecall');
+    e.className = 'linecall ' + (inside ? 'in' : 'out');
+    e.innerHTML = `<small>👁️ OLHO DE PETECA</small><b>${inside ? 'DENTRO!' : 'FORA!'}</b><span>${inside ? 'Caiu ' + cm + ' cm dentro da linha' : 'Caiu ' + cm + ' cm fora da linha'}</span>`;
+    void e.offsetWidth; e.classList.add('on');
+    clearTimeout(this.lcT); this.lcT = setTimeout(() => e.classList.remove('on'), 1900);
   }
   fire(v) { $('#fire').classList.toggle('on', v); document.body.classList.toggle('fire', v); }
   dash(cd) {

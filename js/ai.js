@@ -104,11 +104,11 @@ export class AI {
     }
     const cands = [];
     for (const sx of [-1, 1]) {
-      cands.push({ type: 'drive', x: sx * 2.9, z: -s * 6.3, w: 0.4 + st.power * 0.9 });
-      cands.push({ type: 'drive', x: sx * 3.1, z: -s * 4.2, w: 0.3 + st.power * 0.5 });
-      cands.push({ type: 'clear', x: sx * 2.6, z: -s * 6.6, w: 0.5 + (1 - st.power) * 0.6 });
-      cands.push({ type: 'lob', x: sx * 2.4, z: -s * 6.7, w: 0.25 + (1 - st.power) * 0.5 + (oz < 3.5 ? 1.6 : 0) });
-      cands.push({ type: 'drop', x: sx * 2.3, z: -s * 1.7, w: st.tricky * (1.2 + (oz > 5 ? 0.8 : -1.0)) });
+      cands.push({ type: 'drive', x: sx * (2.2 + st.accuracy * 0.75), z: -s * 6.3, w: 0.4 + st.power * 0.9 });
+      cands.push({ type: 'drive', x: sx * (2.3 + st.accuracy * 0.75), z: -s * 4.2, w: 0.3 + st.power * 0.5 });
+      cands.push({ type: 'clear', x: sx * (2.0 + st.accuracy * 0.6), z: -s * 6.6, w: 0.5 + (1 - st.power) * 0.6 });
+      cands.push({ type: 'lob', x: sx * (1.9 + st.accuracy * 0.5), z: -s * 6.7, w: 0.25 + (1 - st.power) * 0.5 + (oz < 3.5 ? 1.6 : 0) });
+      cands.push({ type: 'drop', x: sx * (1.8 + st.accuracy * 0.5), z: -s * 1.7, w: st.tricky * (1.2 + (oz > 5 ? 0.8 : -1.0)) });
     }
     let best = null;
     for (const c of cands) {

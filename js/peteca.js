@@ -239,9 +239,10 @@ export class Peteca {
     this.trail.geometry.attributes.color.needsUpdate = true;
   }
 
-  showMarker(x, z, timeLeft, t) {
+  showMarker(x, z, timeLeft, t, out = false) {
     const mk = this.marker;
     mk.visible = true;
+    mk.material.color.set(out ? '#ff4d4d' : '#fff7c2');
     mk.position.set(x, 0.02, z);
     const s = 0.5 + Math.min(timeLeft, 2) * 0.55 + Math.sin(t * 10) * 0.04;
     mk.scale.set(s, s, s);

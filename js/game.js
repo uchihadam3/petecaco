@@ -10,6 +10,7 @@ import { AI } from './ai.js';
 import { FX } from './fx.js';
 import { Audio } from './audio.js';
 import { Save } from './save.js';
+import { hitParams, adjustStats } from './assists.js';
 
 const clamp = THREE.MathUtils.clamp;
 const rand = Math.random;
@@ -107,6 +108,10 @@ export class Game {
     // cfg: {opponentId, arena, mode:'friendly'|'tournament'|'practice', format, roundLabel, onEnd}
     this.cfg = cfg;
     this.mode = 'match';
+    // limpa qualquer resto da partida anterior (câmera da comemoração, golpes pendentes...)
+    this.cine = null; this.lineCam = null; this.hitBuf = null; this.serveFired = null; this.tossing = null;
+    this.pendingSet = null; this.setShown = false; this.pendingCall = null; this.countdown = false;
+    this.paused = false; this.hitstop = 0; this.slowT = 0; this.lastHitter = 0; this.pred = null;
     const opp = getOpponent(cfg.opponentId);
     this.opp = opp;
     this.loadArena(cfg.arena || opp.arena);
@@ -115,7 +120,7 @@ export class Game {
     this.scene.add(this.oppChar.root);
     this.oppChar.root.position.set(0, 0, -5);
     const practice = cfg.mode === 'practice';
-    this.ai = new AI(this.oppChar, opp.stats, -1, { practice });
+    this.ai = new AI(this.oppChar, practice ? opp.stats : adjustStats(opp.stats), -1, { practice });
     const S = Save.data;
     const band = (WRISTBANDS.find(w => w.id === S.band) || WRISTBANDS[0]).color;
     if (!this.player) this.player = new Player(this.camera, { ...PLAYER_LOOK, band });
@@ -294,6 +299,7 @@ export class Game {
     if (this.paused) return;
     // hitstop / slow-motion
     let simDt = dt;
+    if (this.mode === 'match') simDt *= Save.data.settings.speed || 1;
     if (this.hitstop > 0) { this.hitstop -= realDt; simDt = 0; }
     else if (this.slowT > 0) { this.slowT -= realDt; simDt = dt * 0.3; }
     const t = this.time;
@@ -428,12 +434,14 @@ export class Game {
     this.updatePlayerHit(realDt);
 
     P.ready = this.ballMode === 'flight' && this.lastHitter < 0;
-    if (this.phase !== 'intro' && this.phase !== 'end') P.update(simDt, realDt, inp.move);
+    const move = this.autoMove(inp.move);
+    this.autoHit();
+    if (this.phase !== 'intro' && this.phase !== 'end') P.update(simDt, realDt, move);
     if (this.phase !== 'end') this.ai.update(simDt, this);
     if (this.phase === 'intro') this.updateIntro(realDt);
 
     // assistência de câmera
-    let assist = Save.data.settings.lookAssist;
+    let assist = this.lineCam ? 0 : Save.data.settings.lookAssist;
     if (assist < 0) assist = this.input.isTouch ? 0.55 : 0.18;
     if (this.ballMode === 'flight' && (this.lastHitter < 0 || this.ball.z > 0) && this.phase === 'rally') P.assistLook(this.ball, assist, realDt);
     if (this.phase === 'end' || this.phase === 'intro') {/* câmera cinemática controla */ }
@@ -444,6 +452,7 @@ export class Game {
     if (ev === 'ground') this.onLand();
     if (this.phase === 'point') this.updatePoint(realDt);
     if (this.phase === 'end') this.updateEnd(realDt);
+    if (this.lineCam) this.applyLineCam(realDt);
     if (this.cine) this.applyCine(realDt);
     this.ui.hud.dash(P.dashCd);
   }
@@ -475,7 +484,7 @@ export class Game {
         Audio.whoosh(0.25);
         // pulo automático pra cortar
         if (Save.data.settings.autoJump && !P.airborne && a === 'hit' && this.ballMode === 'flight' && this.lastHitter < 0) {
-          const r = P.reach({ x: this.ball.x, y: Math.min(this.ball.y, 2.4), z: this.ball.z });
+          const r = P.reach({ x: this.ball.x, y: Math.min(this.ball.y, 2.4), z: this.ball.z }, hitParams().reach);
           if (r && this.ball.y > 2.35 && this.ball.y < 3.4) P.jump();
         }
       }
@@ -489,22 +498,24 @@ export class Game {
     const P = this.player;
     const b = this.ball;
     const can = this.ballMode === 'flight' && this.lastHitter !== 1 && b.z > 0.05 && !(b.netHit && this.lastHitter === -1 && b.z > 0 && false);
-    let r = can ? P.reach(b) : null;
+    const hp = hitParams();
+    let r = can ? P.reach(b, hp.reach) : null;
+    const boost = (q) => q + (1 - q) * hp.boost;
     // no buffer: espera o melhor momento (pico de qualidade)
     if (r) {
       const falling = b.y < 0.5 && b.vy < 0;
-      if (r.q < buf.prevQ - 0.005 || buf.t > 0.24 || falling || r.q > 0.9) { this.doPlayerHit(buf.type, Math.max(r.q, buf.prevQ * 0.98)); this.hitBuf = null; return; }
+      if (r.q < buf.prevQ - 0.005 || buf.t > hp.window || falling || r.q > 0.9) { this.doPlayerHit(buf.type, boost(Math.max(r.q, buf.prevQ * 0.98))); this.hitBuf = null; return; }
       buf.prevQ = r.q;
     } else if (buf.prevQ >= 0) {
       // saiu do alcance: bate com o que tinha
-      this.doPlayerHit(buf.type, buf.prevQ * 0.85); this.hitBuf = null; return;
+      this.doPlayerHit(buf.type, boost(buf.prevQ * 0.85)); this.hitBuf = null; return;
     }
-    if (buf.t > 0.26) { this.hitBuf = null; P.whiff(); }
+    if (buf.t > hp.window + 0.02) { this.hitBuf = null; P.whiff(); }
   }
 
-  aimTarget(type, q) {
+  // ponto de mira sem erro (usado também pelo anel verde)
+  aimPoint(type) {
     const P = this.player;
-    // direção lateral pelo yaw da câmera
     let yawOff = P.yaw; while (yawOff > Math.PI) yawOff -= Math.PI * 2; while (yawOff < -Math.PI) yawOff += Math.PI * 2;
     yawOff = clamp(yawOff, -1.1, 1.1);
     let depth;
@@ -512,16 +523,73 @@ export class Game {
     else if (type === 'lob') depth = 6.6;
     else if (type === 'smash') depth = 4.2 + (1 - clamp(P.pitch + 0.6, 0, 1)) * 1.4;
     else depth = 5.9;
-    const fromZ = this.ball.z;
-    const dz = fromZ + depth;
+    const dz = this.ball.z + depth;
     let tx = this.ball.x * 0.25 + Math.tan(-yawOff) * dz * 0.9;
     tx = clamp(tx, -COURT.halfW - 0.9, COURT.halfW + 0.9);
-    // espalhamento por qualidade
-    const err = (1 - q) * 1.5;
-    tx += (rand() - 0.5) * err * 1.4;
-    let tz = -depth + (rand() - 0.5) * err;
-    if (this.match && this.match.fire) tx = clamp(tx, -COURT.halfW + 0.15, COURT.halfW - 0.15);
+    const aa = Save.data.settings.autoAim || 0;
+    if (aa >= 1) tx = clamp(tx, -COURT.halfW + (aa >= 2 ? 0.6 : 0.35), COURT.halfW - (aa >= 2 ? 0.6 : 0.35));
+    return { x: tx, z: -depth };
+  }
+
+  aimTarget(type, q) {
+    const a = this.aimPoint(type);
+    const aa = Save.data.settings.autoAim || 0;
+    // espalhamento por qualidade (menor com mira assistida)
+    const err = (1 - q) * 1.5 * [1, 0.55, 0.3][aa];
+    let tx = a.x + (rand() - 0.5) * err * 1.4;
+    let tz = a.z + (rand() - 0.5) * err;
+    if ((this.match && this.match.fire) || aa >= 1) tx = clamp(tx, -COURT.halfW + 0.2, COURT.halfW - 0.2);
+    if (aa >= 1) tz = clamp(tz, -COURT.halfL + 0.35, -1.2);
     return { x: tx, z: Math.min(-0.8, tz) };
+  }
+
+  // corrida automática até onde a peteca vai chegar
+  autoMove(move) {
+    const lvl = Save.data.settings.autoMove || 0;
+    const P = this.player, b = this.ball;
+    if (!lvl || this.phase !== 'rally' || P.locked) return move;
+    let tx = null, tz = null;
+    if (this.ballMode === 'flight' && this.lastHitter < 0 && this.pred) {
+      const now = this.rallyTime - this.trajStart;
+      let pt = null;
+      for (const p of this.pred.pts) { if (p.t > now && p.z > 0.4 && p.y < 1.75 && p.vy < 0) { pt = p; break; } }
+      if (!pt) return move;
+      if (Math.abs(this.pred.landing.x) > COURT.halfW + 0.3 || this.pred.landing.z > COURT.halfL + 0.3) {
+        if (Save.data.settings.outWarn) return move; // vai sair: deixa cair
+      }
+      // posição ideal: peteca à frente e um pouco à direita
+      const f = P.forward(new THREE.Vector3()), r = P.right(new THREE.Vector3());
+      tx = pt.x - f.x * 0.6 - r.x * 0.3; tz = pt.z - f.z * 0.6 - r.z * 0.3;
+    } else if (lvl >= 2 && this.lastHitter > 0) {
+      tx = clamp(this.oppChar.root.position.x * -0.2, -1.5, 1.5); tz = 5.2;
+    }
+    if (tx === null) return move;
+    const dx = tx - P.pos.x, dz = tz - P.pos.z, d = Math.hypot(dx, dz);
+    if (d < 0.08) return move;
+    // converte direção do mundo para o referencial do jogador
+    const f = P.forward(new THREE.Vector3()), r = P.right(new THREE.Vector3());
+    const k = Math.min(1, d / 0.6);
+    const ax = (dx * r.x + dz * r.z) / d * k, ay = (dx * f.x + dz * f.z) / d * k;
+    const user = Math.hypot(move.x, move.y);
+    if (lvl >= 2) {
+      if (user > 0.5) return move; // jogador manda
+      return { x: ax, y: ay };
+    }
+    // leve: ímã que soma com o controle do jogador
+    if (d > 3.5 && user > 0.2) return move;
+    const w = user > 0.2 ? 0.45 : 0.85;
+    return { x: clamp(move.x + ax * w, -1, 1), y: clamp(move.y + ay * w, -1, 1) };
+  }
+
+  autoHit() {
+    if (!Save.data.settings.autoHit || this.phase !== 'rally' || this.hitBuf) return;
+    if (this.ballMode !== 'flight' || this.lastHitter > 0 || this.ball.z < 0.05) return;
+    const P = this.player;
+    const r = P.reach(this.ball, hitParams().reach);
+    if (r && (r.q > 0.55 || (this.ball.y < 0.7 && this.ball.vy < 0))) {
+      P.startWindup(this.ball.y < 1.0 ? 'under' : 'normal');
+      this.hitBuf = { t: 0, type: 'hit', bestQ: -1, prevQ: -1 };
+    }
   }
 
   doPlayerHit(type, q) {
@@ -531,7 +599,7 @@ export class Game {
     if (t === 'drive' && b.y < 0.9) t = 'clear';
     const target = this.aimTarget(t, q);
     let netError = false;
-    if (q < 0.2 && rand() < 0.35) netError = true;
+    if (hitParams().netErrors && q < 0.2 && rand() < 0.35) netError = true;
     P.strike(new THREE.Vector3(b.x, b.y, b.z), b.y < 1.0);
     const powerMul = 0.92 + q * 0.18;
     this.performHit(1, { type: t, target, quality: q, powerMul, netError });
@@ -542,25 +610,26 @@ export class Game {
     // dicas de primeira partida
     if (!Save.data.tutorialSeen && this.phase === 'rally') {
       const t = this.input.isTouch;
+      const where = s.landing ? 'o ANEL AMARELO' : 'a SOMBRA da peteca';
+      const aimTip = s.aimMarker ? ' — o anel VERDE mostra onde sua batida vai cair' : ' — a peteca vai pra onde você está olhando';
       const msg = this.lastHitter < 0
-        ? (t ? 'Corra até o ANEL AMARELO (joystick) e toque BATER quando a peteca chegar!' : 'Corra até o ANEL AMARELO (WASD) e CLIQUE quando a peteca chegar!')
-        : (t ? 'Arraste a tela pra mirar — o anel VERDE mostra onde sua batida vai cair' : 'Mova o mouse pra mirar — o anel VERDE mostra onde sua batida vai cair');
-      if (this._tipMsg !== msg) { this._tipMsg = msg; this.ui.hud.hint(msg); }
+        ? (t ? `Corra até ${where} (joystick) e toque BATER quando a peteca chegar!` : `Corra até ${where} (WASD) e CLIQUE quando a peteca chegar!`)
+        : (t ? 'Arraste a tela pra mirar' + aimTip : 'Mova o mouse pra mirar' + aimTip);
+      const help = ' • Achou difícil? Ligue as Assistências em Ajustes';
+      if (this._tipMsg !== msg) { this._tipMsg = msg; this.ui.hud.hint(msg + help); }
       if (this.match && this.match.stats.hits >= 4) { Save.data.tutorialSeen = true; Save.persist(); this.ui.hud.hint(null); this._tipMsg = null; }
     }
     if (this.ballMode === 'flight' && this.pred && this.lastHitter < 0 && s.landing) {
       const L = this.pred.landing;
-      if (L.z > 0) pk.showMarker(L.x, L.z, L.t - (this.rallyTime - this.trajStart), this.time); else pk.hideMarker();
-    } else pk.hideMarker();
+      const out = L.z > 0 && !isInside(L.x, L.z, 0.02) && !(this.pred.netEvent && this.pred.netEvent.type === 'net');
+      if (L.z > 0) pk.showMarker(L.x, L.z, L.t - (this.rallyTime - this.trajStart), this.time, s.outWarn && out); else pk.hideMarker();
+      this.ui.hud.outWarn(!!(s.outWarn && out && this.phase === 'rally'));
+    } else { pk.hideMarker(); this.ui.hud.outWarn(false); }
     const myTurn = (this.phase === 'serve' && this.server > 0) || (this.ballMode === 'flight' && this.lastHitter < 0 && b.z > -1);
     if (myTurn && s.aimMarker) {
       const type = this.phase === 'serve' ? 'serve' : b.y > 2.3 ? 'smash' : 'drive';
-      const P = this.player;
-      let yawOff = P.yaw; while (yawOff > Math.PI) yawOff -= Math.PI * 2; while (yawOff < -Math.PI) yawOff += Math.PI * 2;
-      yawOff = clamp(yawOff, -1.1, 1.1);
-      const depth = type === 'smash' ? 4.6 : 5.9;
-      const tx = clamp(b.x * 0.25 + Math.tan(-yawOff) * (b.z + depth) * 0.9, -COURT.halfW - 0.9, COURT.halfW + 0.9);
-      pk.showAim(tx, -depth, Math.abs(tx) <= COURT.halfW, this.time);
+      const a = this.aimPoint(type === 'smash' ? 'smash' : 'drive');
+      pk.showAim(a.x, a.z, Math.abs(a.x) <= COURT.halfW, this.time);
     } else pk.hideAim();
   }
 
@@ -573,8 +642,16 @@ export class Game {
     this.fx.dustPuff(b.x, b.z, this.arena.surface === 'sand' ? '#e3c08a' : this.arena.surface === 'wood' ? '#d9b48a' : '#cfcfcf', 6, near ? 1 : 0.8);
     this.fx.groundRing(b.x, b.z, res.winner > 0 ? '#7dff8a' : '#ff5c5c', 0.8);
     this.hitBuf = null;
-    this.peteca.hideMarker(); this.peteca.hideAim();
+    this.peteca.hideMarker(); this.peteca.hideAim(); this.ui.hud.outWarn(false);
     this.phase = 'point'; this.pointT = 0;
+    // lance de linha apertado: replay "olho de peteca"
+    const dLine = Math.min(Math.abs(Math.abs(b.x) - COURT.halfW), Math.abs(Math.abs(b.z) - COURT.halfL));
+    const nearLine = dLine < 0.5 && Math.abs(b.x) < COURT.halfW + 0.5 && Math.abs(b.z) < COURT.halfL + 0.5 && Math.abs(b.z) > 0.3;
+    if (nearLine && !m.practice) {
+      const inside = isInside(b.x, b.z, 0.04);
+      const side = Math.abs(Math.abs(b.x) - COURT.halfW) < Math.abs(Math.abs(b.z) - COURT.halfL) ? 'x' : 'z';
+      this.lineCam = { t: 0, x: b.x, z: b.z, inside, cm: Math.max(1, Math.round(dLine * 100)), side, shown: false };
+    }
     if (m.practice) {
       const rally = m.rally;
       if (rally > m.practiceRecord) m.practiceRecord = rally;
@@ -650,6 +727,27 @@ export class Game {
     }
   }
 
+  applyLineCam(realDt) {
+    const L = this.lineCam;
+    L.t += realDt;
+    if (L.t < 0.45) return; // deixa ver a queda normal primeiro
+    if (!L.shown) {
+      L.shown = true;
+      this.player.hands.visible = false;
+      this.ui.hud.lineCall(L.inside, L.cm);
+      Audio.ooh();
+    }
+    const k = Math.min(1, (L.t - 0.45) / 0.35);
+    const sx = L.side === 'x' ? Math.sign(L.x) : 0, sz = L.side === 'z' ? Math.sign(L.z) : 0;
+    // câmera baixinha, olhando a marca e a linha
+    const cx = L.x - sx * 1.1 + (L.side === 'z' ? 0.9 : 0), cz = L.z - sz * 1.1 + (L.side === 'x' ? (L.z > 0 ? 0.9 : -0.9) : 0);
+    const cam = this.camera;
+    const from = cam.position.clone();
+    cam.position.set(from.x + (cx - from.x) * k, from.y + (0.75 - from.y) * k, from.z + (cz - from.z) * k);
+    cam.lookAt(L.x, 0, L.z);
+    if (L.t > 2.1) { this.lineCam = null; this.player.hands.visible = true; }
+  }
+
   updatePoint(realDt) {
     this.pointT += realDt;
     const m = this.match;
@@ -704,6 +802,7 @@ export class Game {
     const m = this.match;
     if (this.phase === 'end') return;
     this.phase = 'end';
+    this.lineCam = null;
     this.endT = 0;
     this.input.enabled = false;
     this.input.exitLock();
