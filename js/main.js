@@ -7,7 +7,7 @@ import { UI } from './ui.js';
 import { Input } from './input.js';
 import { Game } from './game.js';
 import { Character } from './character.js';
-import { initApp, applyUpdateIfSafe, APP_VERSION } from './app.js';
+import { initApp, applyUpdateIfSafe, applyOrientation, APP_VERSION } from './app.js';
 import { PRESETS, PRESET_ORDER, applyPreset, detectPreset, ensureAssists, xpMultiplier } from './assists.js';
 
 const $ = (s) => document.querySelector(s);
@@ -532,6 +532,7 @@ function buildSettings() {
     ${rng('music', 'Música', 'Samba do menu', 0, 1, 0.05)}
     ${rng('sfx', 'Efeitos', 'Batidas, torcida, apito', 0, 1, 0.05)}
     ${tog('haptics', 'Vibração', 'No celular, a cada batida')}
+    ${seg('orientation', 'Tela do celular', 'Como o jogo fica no app instalado', [['portrait', '📱 Em pé'], ['landscape', '📲 Deitado'], ['auto', '🔄 Girar']])}
     <div class="srow"><label>Apagar progresso<small>Começa do zero (não tem volta!)</small></label><button class="btn small ghost" id="set-reset">APAGAR</button></div>
     <div class="version">Petecaço versão ${APP_VERSION} • atualiza sozinho</div>`;
   const body = $('#set-body');
@@ -543,6 +544,7 @@ function buildSettings() {
     const k = b.dataset.seg; let v = b.dataset.v; if (!isNaN(parseFloat(v)) && k !== 'quality') v = parseFloat(v);
     st[k] = v; Audio.ui('click'); after();
     if (k === 'quality') { resize(); if (game.mode === 'demo') { game.arena = null; game.startDemo(pickDemoArena()); } }
+    if (k === 'orientation') { applyOrientation(v); checkRotate(); }
   });
   body.querySelectorAll('[data-rng]').forEach(r => r.oninput = () => { st[r.dataset.rng] = parseFloat(r.value); Audio.setVolumes(st.sfx, st.music); Save.persist(); });
   $('#set-name').oninput = (e) => { S.name = e.target.value.trim() || 'Você'; Save.persist(); };
@@ -586,9 +588,11 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pause
 // ---------- rotação no celular ----------
 let rotOk = false;
 function checkRotate() {
+  // só pede pra girar se o jogador escolheu jogar deitado e o celular está em pé
   const portrait = input.isTouch && innerHeight > innerWidth * 1.1;
-  $('#rotate').classList.toggle('on', portrait && !rotOk && game.mode === 'match');
+  $('#rotate').classList.toggle('on', portrait && S.settings.orientation === 'landscape' && !rotOk && game.mode === 'match');
 }
+window.__petecacoOrientation = () => S.settings.orientation;
 $('#rot-ok').onclick = () => { rotOk = true; checkRotate(); };
 addEventListener('resize', resize);
 

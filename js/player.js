@@ -46,6 +46,7 @@ function placeLimb(mesh, a, b, r) {
 class FPArm {
   constructor(parent, side, mats) {
     this.side = side; // 1 = direita, -1 = esquerda
+    this.spread = 1;  // < 1 no celular em pé: mãos mais pro centro
     this.shoulder = v3(0.3 * side, -0.42, 0.18);
     this.hand = buildHand(mats.skin, mats.band, mats.sleeve, side);
     this.upper = limb(0.05, mats.sleeve);
@@ -61,6 +62,7 @@ class FPArm {
     this.elbow = new THREE.Vector3();
   }
   update(dt) {
+    this.shoulder.x = 0.3 * this.side * this.spread;
     this.pos.x = damp(this.pos.x, this.tPos.x, this.k, dt);
     this.pos.y = damp(this.pos.y, this.tPos.y, this.k, dt);
     this.pos.z = damp(this.pos.z, this.tPos.z, this.k, dt);
@@ -84,7 +86,7 @@ class FPArm {
     placeLimb(this.upper, s, this.elbow, 0.05);
     placeLimb(this.fore, this.elbow, _a, 0.036);
   }
-  setPose(p, r, k = 14, curl = 0.15) { this.tPos.copy(p); this.tRot.set(r[0], r[1], r[2]); this.k = k; this.tCurl = curl; }
+  setPose(p, r, k = 14, curl = 0.15, raw = false) { this.tPos.copy(p); if (!raw) this.tPos.x *= this.spread; this.tRot.set(r[0], r[1], r[2]); this.k = k; this.tCurl = curl; }
 }
 
 export class Player {
@@ -246,7 +248,7 @@ export class Player {
       S.t += dt;
       const t = S.t;
       if (t < 0.055) {
-        R.setPose(S.contact, S.under ? [-1.2, 0, 0.1] : [-0.15, -0.1, 0.05], 70, 0.0);
+        R.setPose(S.contact, S.under ? [-1.2, 0, 0.1] : [-0.15, -0.1, 0.05], 70, 0.0, true);
       } else if (t < 0.24) {
         if (S.under) R.setPose(v3(0.05, 0.02, -0.72), [-1.7, 0.2, -0.2], 22, 0.1);
         else R.setPose(v3(-0.05, -0.28, -0.72), [-1.25, 0.3, -0.55], 22, 0.15);

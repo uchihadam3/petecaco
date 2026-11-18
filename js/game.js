@@ -123,7 +123,7 @@ export class Game {
     this.ai = new AI(this.oppChar, practice ? opp.stats : adjustStats(opp.stats), -1, { practice });
     const S = Save.data;
     const band = (WRISTBANDS.find(w => w.id === S.band) || WRISTBANDS[0]).color;
-    if (!this.player) this.player = new Player(this.camera, { ...PLAYER_LOOK, band });
+    if (!this.player) { this.player = new Player(this.camera, { ...PLAYER_LOOK, band }); this.applyFov(); }
     this.player.setBand(band);
     this.player.hands.visible = true;
     this.player.pos.set(0, 0, 5.5); this.player.yaw = 0; this.player.pitch = 0.05;
@@ -854,18 +854,25 @@ export class Game {
     if (this.player) this.player.hands.visible = false;
   }
 
+  // FOV vertical a partir de um FOV horizontal desejado (celular em pé precisa de mais)
+  static vfov(hfovDeg, asp, max = 105) {
+    return Math.min(max, 2 * Math.atan(Math.tan(hfovDeg * Math.PI / 360) / asp) * 180 / Math.PI);
+  }
   applyFov() {
     const asp = innerWidth / innerHeight;
     let fov = 72;
-    if (asp < 1.2) fov = 88; else if (asp < 1.6) fov = 76;
+    if (asp < 1) fov = Math.max(80, Game.vfov(62, asp));
+    else if (asp < 1.2) fov = 84; else if (asp < 1.6) fov = 76;
     this.baseFov = fov;
+    this.menuFov = asp < 1 ? Game.vfov(50, asp, 95) : 50;
+    if (this.player) { const sp = asp < 1 ? Math.max(0.55, asp * 1.15) : 1; this.player.R.spread = this.player.L.spread = sp; this.player.hands.position.set(0, asp < 1 ? -0.07 : 0, asp < 1 ? 0.04 : 0); }
   }
 
   render() {
     if (this.mode === 'match' && this.player) {
       const target = (this.baseFov || 72) + this.player.fovKick + (this.player.dashT > 0 ? 6 : 0);
       if (Math.abs(this.camera.fov - target) > 0.01) { this.camera.fov += (target - this.camera.fov) * 0.3; this.camera.updateProjectionMatrix(); }
-    } else if (this.camera.fov !== 50) { this.camera.fov = 50; this.camera.updateProjectionMatrix(); }
+    } else if (this.camera.fov !== (this.menuFov || 50)) { this.camera.fov = this.menuFov || 50; this.camera.updateProjectionMatrix(); }
     this.renderer.render(this.scene, this.camera);
   }
 }

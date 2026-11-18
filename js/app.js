@@ -1,5 +1,5 @@
 // Instalação (PWA) e atualização automática do Petecaço
-export const APP_VERSION = '1.2.1';
+export const APP_VERSION = '1.3.0';
 
 const $ = (s) => document.querySelector(s);
 let deferredPrompt = null;
@@ -40,8 +40,7 @@ export function initApp({ toast, isSafe }) {
   if (close) close.addEventListener('click', () => $('#install-modal').classList.remove('show'));
   refreshButton();
 
-  // trava em paisagem quando instalado no celular
-  if (isInstalled() && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+  applyOrientation();
 
   // ---- service worker + atualização automática ----
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
@@ -64,6 +63,15 @@ export function initApp({ toast, isSafe }) {
     pendingReload = true;
     applyUpdateIfSafe();
   });
+}
+
+// orientação da tela no app instalado: 'portrait' (padrão), 'landscape' ou 'auto'
+export function applyOrientation(mode) {
+  mode = mode || (window.__petecacoOrientation && window.__petecacoOrientation()) || 'portrait';
+  const so = screen.orientation;
+  if (!so || !so.lock) return;
+  if (mode === 'auto') { try { so.unlock(); } catch (e) { /* ok */ } return; }
+  so.lock(mode === 'landscape' ? 'landscape' : 'portrait').catch(() => {});
 }
 
 // chamado quando o jogador volta ao menu

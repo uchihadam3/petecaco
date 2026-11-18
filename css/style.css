@@ -413,3 +413,29 @@ body:not(.touch) .touch-only { display: none; }
 .preset-desc { color: var(--muted); font-size: 13px; font-weight: 700; text-align: center; min-height: 18px; }
 .assist-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 @media (max-width: 560px) { .presets { grid-template-columns: repeat(3, 1fr); } }
+
+/* celular em pé (vertical) */
+@media (orientation: portrait) and (pointer: coarse), (orientation: portrait) and (max-width: 600px) {
+  .tz-look { left: 0; right: 0; width: auto; top: 110px; bottom: 42%; }
+  .tz-move { left: 0; width: 46%; top: auto; bottom: 0; height: 42%; }
+  .tbtns { transform: scale(0.86); transform-origin: 100% 100%; }
+  .opp-face { top: calc(max(10px, env(safe-area-inset-top)) + 70px); }
+  .scoreboard { top: max(10px, env(safe-area-inset-top)); }
+  .rally { top: calc(max(10px, env(safe-area-inset-top)) + 84px); }
+  .popup { top: 34%; }
+  .banner { top: 24%; }
+  .banner .b-main { font-size: 40px; padding: 4px 24px; }
+  .servemeter { bottom: 46%; }
+  .hint { bottom: calc(46% + 60px); font-size: 12px; }
+  .fire-badge { bottom: 46%; font-size: 18px; }
+  .introcard { bottom: 46%; padding: 10px 18px 10px max(14px, env(safe-area-inset-left)); }
+  .introcard img { width: 60px; height: 60px; }
+  .introcard .ic-name { font-size: 30px; }
+  .introcard .ic-q { display: none; }
+  .linecall { bottom: 46%; }
+  .countdown { top: 34%; }
+  #menu { background: linear-gradient(180deg, rgba(5, 10, 25, 0.25) 0%, rgba(5, 10, 25, 0.75) 45%, rgba(5, 10, 25, 0.92) 100%); }
+  .menu-center { align-items: center; padding-left: 0; text-align: center; }
+  .menu-foot { padding-left: 0; text-align: center; }
+  .logo { font-size: clamp(48px, 15vw, 80px); }
+}
