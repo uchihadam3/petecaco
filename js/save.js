@@ -15,7 +15,7 @@ function defaults() {
     achievements: {},
     settings: {
       sens: 1.0, invertY: false, quality: 'auto', music: 0.6, sfx: 0.9,
-      landing: true, aimMarker: true, lookAssist: -1, autoJump: true, format: 'rapida', haptics: true, orientation: 'portrait',
+      landing: true, aimMarker: true, lookAssist: -1, autoJump: true, format: 'rapida', haptics: true, orientation: 'landscape',
     },
     tutorialSeen: false,
   };

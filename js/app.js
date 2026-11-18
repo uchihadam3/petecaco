@@ -1,5 +1,5 @@
 // Instalação (PWA) e atualização automática do Petecaço
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.3.1';
 
 const $ = (s) => document.querySelector(s);
 let deferredPrompt = null;
@@ -65,9 +65,9 @@ export function initApp({ toast, isSafe }) {
   });
 }
 
-// orientação da tela no app instalado: 'portrait' (padrão), 'landscape' ou 'auto'
+// orientação da tela no app instalado: 'landscape' (padrão), 'portrait' ou 'auto'
 export function applyOrientation(mode) {
-  mode = mode || (window.__petecacoOrientation && window.__petecacoOrientation()) || 'portrait';
+  mode = mode || (window.__petecacoOrientation && window.__petecacoOrientation()) || 'landscape';
   const so = screen.orientation;
   if (!so || !so.lock) return;
   if (mode === 'auto') { try { so.unlock(); } catch (e) { /* ok */ } return; }

@@ -17,6 +17,8 @@ const setLoad = (p) => { loadbar.style.width = (p * 100) + '%'; };
 
 Save.load();
 ensureAssists();
+// padrão passou a ser deitado (horizontal): migra quem ficou com o padrão antigo
+if (!Save.data.orientV2) { Save.data.settings.orientation = 'landscape'; Save.data.orientV2 = true; Save.persist(); }
 const S = Save.data;
 const ui = new UI();
 const canvas = $('#c');
@@ -532,7 +534,7 @@ function buildSettings() {
     ${rng('music', 'Música', 'Samba do menu', 0, 1, 0.05)}
     ${rng('sfx', 'Efeitos', 'Batidas, torcida, apito', 0, 1, 0.05)}
     ${tog('haptics', 'Vibração', 'No celular, a cada batida')}
-    ${seg('orientation', 'Tela do celular', 'Como o jogo fica no app instalado', [['portrait', '📱 Em pé'], ['landscape', '📲 Deitado'], ['auto', '🔄 Girar']])}
+    ${seg('orientation', 'Tela do celular', 'Como o jogo fica no app instalado', [['landscape', '📲 Deitado'], ['portrait', '📱 Em pé'], ['auto', '🔄 Girar']])}
     <div class="srow"><label>Apagar progresso<small>Começa do zero (não tem volta!)</small></label><button class="btn small ghost" id="set-reset">APAGAR</button></div>
     <div class="version">Petecaço versão ${APP_VERSION} • atualiza sozinho</div>`;
   const body = $('#set-body');
