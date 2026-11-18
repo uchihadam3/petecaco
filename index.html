@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="Petecaço — peteca 3D em primeira pessoa. Enfrente adversários, vença torneios e vire lenda.">
+<title>Petecaço</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏸</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="vignette"></div>
+<div id="flash"></div>
+<div id="speedlines"></div>
+
+<!-- CARREGANDO -->
+<div id="loading" class="screen show">
+  <div class="logo big"><span>PETECA</span><span class="cc">ÇO</span></div>
+  <div class="loadbar"><i></i></div>
+  <p class="muted">Amarrando as penas...</p>
+</div>
+
+<!-- MENU PRINCIPAL -->
+<div id="menu" class="screen">
+  <div class="menu-top">
+    <div class="profile-chip" data-go="profile">
+      <div class="lvl"><b id="m-level">1</b><small>NÍVEL</small></div>
+      <div class="pinfo">
+        <div class="pname" id="m-name">Você</div>
+        <div class="xpbar"><i id="m-xp"></i></div>
+      </div>
+    </div>
+    <div class="coins"><span class="coin">●</span> <b id="m-coins">0</b></div>
+  </div>
+  <div class="menu-center">
+    <div class="logo"><span>PETECA</span><span class="cc">ÇO</span></div>
+    <div class="tagline">Peteca em primeira pessoa</div>
+    <div class="menu-buttons">
+      <button class="btn primary xl" data-go="opponents"><span class="ic">🤚</span> JOGAR AMISTOSO</button>
+      <button class="btn gold xl" data-go="tournaments"><span class="ic">🏆</span> TORNEIOS</button>
+      <div class="row">
+        <button class="btn" data-go="practice"><span class="ic">🎯</span> TREINO</button>
+        <button class="btn" data-go="profile"><span class="ic">🎒</span> COLEÇÃO</button>
+      </div>
+      <div class="row">
+        <button class="btn ghost" data-go="howto"><span class="ic">❓</span> COMO JOGAR</button>
+        <button class="btn ghost" data-go="settings"><span class="ic">⚙️</span> AJUSTES</button>
+      </div>
+    </div>
+    <div class="goal" id="m-goal"></div>
+  </div>
+  <div class="menu-foot"><span id="m-trophies"></span></div>
+</div>
+
+<!-- ADVERSÁRIOS -->
+<div id="opponents" class="screen panel-screen">
+  <div class="sheader"><button class="back" data-back>‹</button><h2>Escolha seu adversário</h2></div>
+  <div class="opp-layout">
+    <div class="opp-grid" id="opp-grid"></div>
+    <div class="opp-detail" id="opp-detail"></div>
+  </div>
+</div>
+
+<!-- TORNEIOS -->
+<div id="tournaments" class="screen panel-screen">
+  <div class="sheader"><button class="back" data-back>‹</button><h2>Torneios</h2></div>
+  <div class="tour-grid" id="tour-grid"></div>
+</div>
+
+<!-- CHAVE -->
+<div id="bracket" class="screen panel-screen">
+  <div class="sheader"><button class="back" data-back-menu>‹</button><h2 id="br-title">Torneio</h2></div>
+  <div class="bracket" id="br-body"></div>
+  <div class="br-actions" id="br-actions"></div>
+</div>
+
+<!-- COLEÇÃO -->
+<div id="profile" class="screen panel-screen">
+  <div class="sheader"><button class="back" data-back>‹</button><h2>Coleção</h2><div class="coins small"><span class="coin">●</span> <b class="coins-val">0</b></div></div>
+  <div class="tabs" id="prof-tabs">
+    <button class="tab on" data-tab="skins">Petecas</button>
+    <button class="tab" data-tab="bands">Munhequeiras</button>
+    <button class="tab" data-tab="ach">Conquistas</button>
+    <button class="tab" data-tab="stats">Estatísticas</button>
+  </div>
+  <div class="tab-body" id="prof-body"></div>
+</div>
+
+<!-- AJUSTES -->
+<div id="settings" class="screen panel-screen">
+  <div class="sheader"><button class="back" data-back>‹</button><h2>Ajustes</h2></div>
+  <div class="settings" id="set-body"></div>
+</div>
+
+<!-- COMO JOGAR -->
+<div id="howto" class="screen panel-screen">
+  <div class="sheader"><button class="back" data-back>‹</button><h2>Como jogar</h2></div>
+  <div class="howto">
+    <div class="howcard">
+      <h3>🖐️ A regra</h3>
+      <p>Um contra um. Bata na peteca com a mão aberta e passe por cima da rede. <b>Só um toque por lado.</b> Se a peteca cair no chão do lado de lá, dentro das linhas, o ponto é seu. Cair fora ou na rede: ponto do adversário. Quem ganha o ponto saca.</p>
+    </div>
+    <div class="howcard">
+      <h3>⏱️ O segredo: TEMPO</h3>
+      <p>Aperte para bater <b>um pouquinho antes</b> da peteca chegar. O jogo guarda seu toque por um instante e bate no melhor momento. Peteca na altura do ombro, na sua frente, à direita = <b class="gold">PERFEITO!</b> 3 perfeitas seguidas = <b class="fire">EM CHAMAS 🔥</b> (golpes mais rápidos e precisos).</p>
+    </div>
+    <div class="howcard">
+      <h3>🎯 Mira</h3>
+      <p>Você mira com a <b>direção do olhar</b>. O anel verde na quadra adversária mostra onde vai cair (vermelho = fora!). O anel amarelo no seu lado mostra onde a peteca vai cair.</p>
+    </div>
+    <div class="howcard pc-only">
+      <h3>⌨️ PC</h3>
+      <ul>
+        <li><kbd>W A S D</kbd> mover • <kbd>Mouse</kbd> olhar/mirar</li>
+        <li><kbd>Clique esq.</kbd> BATER (alta = CORTADA automática)</li>
+        <li><kbd>Clique dir.</kbd> BALÃO (alto e fundo)</li>
+        <li><kbd>E</kbd> ou <kbd>botão do meio</kbd> CURTINHA (perto da rede)</li>
+        <li><kbd>Espaço</kbd> pular • <kbd>Shift</kbd> arrancada • <kbd>P</kbd> pausa</li>
+      </ul>
+    </div>
+    <div class="howcard touch-only">
+      <h3>📱 Celular</h3>
+      <ul>
+        <li>Lado esquerdo da tela: <b>joystick</b> pra correr</li>
+        <li>Lado direito: arraste pra <b>olhar/mirar</b> (a câmera ajuda a seguir a peteca)</li>
+        <li><b>BATER</b>, <b>BALÃO</b>, <b>CURTA</b>, <b>PULAR</b> e <b>⚡</b> arrancada</li>
+        <li>Jogue com o celular deitado 🔄</li>
+      </ul>
+    </div>
+    <div class="howcard">
+      <h3>🏆 Progresso</h3>
+      <p>Ganhe XP e moedas em toda partida. Compre petecas e munhequeiras na Coleção. Vença os três torneios para enfrentar a lenda secreta...</p>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTADO -->
+<div id="result" class="screen panel-screen">
+  <div class="result-wrap">
+    <div class="res-title" id="res-title">VITÓRIA!</div>
+    <div class="res-sub" id="res-sub"></div>
+    <div class="res-vs" id="res-vs"></div>
+    <div class="res-stats" id="res-stats"></div>
+    <div class="res-rewards">
+      <div class="xprow"><div class="lvl"><b id="res-level">1</b><small>NÍVEL</small></div><div class="xpbar big"><i id="res-xp"></i></div><div class="xpgain" id="res-xpgain">+0 XP</div></div>
+      <div class="coinrow"><span class="coin">●</span> <b id="res-coins">+0</b></div>
+    </div>
+    <div class="res-actions" id="res-actions"></div>
+    <div class="res-ach" id="res-ach"></div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="scoreboard">
+    <div class="sb-side me"><div class="sb-name" id="hud-me">VOCÊ</div><div class="sb-sets" id="hud-sets-me"></div></div>
+    <div class="sb-score"><span id="hud-pts-me">0</span><i>×</i><span id="hud-pts-op">0</span></div>
+    <div class="sb-side op"><div class="sb-sets" id="hud-sets-op"></div><div class="sb-name" id="hud-op">ADV</div></div>
+    <div class="sb-serve" id="hud-serve"></div>
+  </div>
+  <div class="opp-face"><img id="hud-face" alt=""><div class="speech" id="hud-speech"></div></div>
+  <div class="rally" id="hud-rally"></div>
+  <div class="popup-layer" id="popups"></div>
+  <div class="banner" id="banner"><div class="b-main"></div><div class="b-sub"></div></div>
+  <div class="call" id="call"></div>
+  <div class="countdown" id="countdown"></div>
+  <div class="introcard" id="introcard"></div>
+  <div class="servemeter" id="servemeter"><div class="sm-track"><div class="sm-perfect"></div><div class="sm-good"></div><i id="sm-needle"></i></div><div class="sm-label">SAQUE</div></div>
+  <div class="hint" id="hint"></div>
+  <div class="fire-badge" id="fire">🔥 EM CHAMAS</div>
+  <div class="crosshair"><i></i></div>
+  <div class="dashcd" id="dashcd"><i></i></div>
+  <button class="pausebtn" id="pausebtn" aria-label="Pausar"><i></i><i></i></button>
+</div>
+
+<!-- TOQUE -->
+<div id="touch">
+  <div class="tz-move"></div>
+  <div class="tz-look"></div>
+  <div class="stick"><div class="knob"></div></div>
+  <div class="tbtns">
+    <button class="tb hit" data-act="hit">BATER</button>
+    <button class="tb lob" data-act="lob">BALÃO</button>
+    <button class="tb drop" data-act="drop">CURTA</button>
+    <button class="tb jump" data-act="jump">PULAR</button>
+    <button class="tb dash" data-act="dash">⚡</button>
+  </div>
+</div>
+
+<!-- PAUSA -->
+<div id="pause" class="screen modal">
+  <div class="modal-card">
+    <h2>Pausado</h2>
+    <button class="btn primary" id="p-resume">CONTINUAR</button>
+    <button class="btn" id="p-settings">AJUSTES</button>
+    <button class="btn ghost" id="p-quit">DESISTIR</button>
+  </div>
+</div>
+
+<div id="lockhint" class="lockhint"><div><b>Clique para jogar</b><small>O mouse fica preso no jogo • ESC solta</small></div></div>
+<div id="rotate" class="rotate"><div>🔄<b>Gire o celular</b><small>O Petecaço é melhor deitado</small><button class="btn small" id="rot-ok">Jogar assim mesmo</button></div></div>
+<div id="toasts"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
